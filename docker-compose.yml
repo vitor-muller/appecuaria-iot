@@ -1,11 +1,9 @@
 services:
-  api:
+  api-iot:
     build: .
-    container_name: api_service
+    container_name: api_iot_service
     env_file: 
-      - api.env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
+      - iot.env
     networks:
       - appnet
 
