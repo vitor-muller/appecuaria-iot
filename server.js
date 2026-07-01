@@ -43,8 +43,7 @@ const autenticarCognito = async (req, res, next) => {
   }
 };
 
-// 5. Rota POST para receber os dados do Microcontrolador
-app.post('/api/pesagem-iot', autenticarCognito, async (req, res) => {
+app.post('/pesagem', autenticarCognito, async (req, res) => {
   try {
     const { rfidAnimal, pesoKg } = req.body;
 
@@ -71,7 +70,7 @@ app.post('/api/pesagem-iot', autenticarCognito, async (req, res) => {
   }
 });
 
-app.get('/api/pesagem-iot', autenticarCognito, async (req, res) => {
+app.get('/pesagem', autenticarCognito, async (req, res) => {
   try {
     const pesagens = await PesagemAutomatica.find({ donoId: req.usuario.sub })
                                             .sort({ dataHoraLeitura: -1 });
@@ -83,7 +82,7 @@ app.get('/api/pesagem-iot', autenticarCognito, async (req, res) => {
   }
 });
 
-app.put('/api/pesagem-iot/:id', autenticarCognito, async (req, res) => {
+app.put('/pesagem/:id', autenticarCognito, async (req, res) => {
   try {
     const { id } = req.params;
     const { rfidAnimal, pesoKg } = req.body;
@@ -109,7 +108,7 @@ app.put('/api/pesagem-iot/:id', autenticarCognito, async (req, res) => {
   }
 });
 
-app.delete('/api/pesagem-iot/:id', autenticarCognito, async (req, res) => {
+app.delete('/pesagem/:id', autenticarCognito, async (req, res) => {
   try {
     const { id } = req.params;
 
