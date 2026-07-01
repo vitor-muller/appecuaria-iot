@@ -1,0 +1,14 @@
+services:
+  api:
+    build: .
+    container_name: api_service
+    env_file: 
+      - api.env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    external: true
