@@ -13,6 +13,14 @@ pipeline {
             }
         }
 
+        stage('Preparar Secrets') {
+            steps {
+                withCredentials([file(credentialsId: 'iot_env_file', variable: 'SECRET_ENV')]) {
+                    bat 'copy "%SECRET_ENV%" iot.env'
+                }
+            }
+        }
+
         stage('Verificar Network') {
             steps {
                 bat '''
