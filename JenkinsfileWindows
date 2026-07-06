@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+
+    environment {
+        COMPOSE_FILE = "docker-compose.yml"
+        NETWORK_NAME = "appnet"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Verificar Network') {
+            steps {
+                bat '''
+                docker network ls | findstr /i "%NETWORK_NAME%" >nul
+                if %errorlevel% neq 0 (
+                    echo Criando rede %NETWORK_NAME%...
+                    docker network create %NETWORK_NAME%
+                ) else (
+                    echo Rede %NETWORK_NAME% ja existe.
+                )
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                bat 'docker compose -f %COMPOSE_FILE% build'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                bat 'docker compose -f %COMPOSE_FILE% up -d --force-recreate'
+            }
+        }
+        
+        stage('Limpeza de Imagens Órfãs') {
+            steps {
+                echo "Limpando imagens antigas para liberar espaço no servidor..."
+                bat 'docker image prune -f'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deploy realizado com sucesso!'
+        }
+        failure {
+            echo 'Erro no pipeline!'
+        }
+    }
+}
