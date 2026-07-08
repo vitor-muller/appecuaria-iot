@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const { CognitoJwtVerifier } = require('aws-jwt-verify');
+const amqp = require('amqplib');
 
 const app = express();
 app.use(express.json());
@@ -43,6 +44,34 @@ const autenticarCognito = async (req, res, next) => {
   }
 };
 
+
+async function enviarParaRabbitMQ(dadosPesagem) {
+  try {
+    const rabbitUrl = process.env.RABBITMQ_URI || 'amqp://guest:guest@rabbitmq:5672';
+    const conexao = await amqp.connect(rabbitUrl);
+    const canal = await conexao.createChannel();
+
+    const exchange = 'sensor_exchange';
+    const tipo = 'topic';
+    
+    const routingKey = `sensor.pesagem.${dadosPesagem.donoId}`; 
+
+    await canal.assertExchange(exchange, tipo, { durable: true });
+
+    const mensagem = JSON.stringify(dadosPesagem);
+    canal.publish(exchange, routingKey, Buffer.from(mensagem));
+
+    console.log(`Mensagem enviada com routing key '${routingKey}':`, mensagem);
+
+    setTimeout(() => {
+      conexao.close();
+    }, 500);
+
+  } catch (erro) {
+    console.error('Erro no RabbitMQ:', erro);
+  }
+}
+
 app.post('/pesagem', autenticarCognito, async (req, res) => {
   try {
     const { rfidAnimal, pesoKg } = req.body;
@@ -51,22 +80,26 @@ app.post('/pesagem', autenticarCognito, async (req, res) => {
       return res.status(400).json({ erro: 'Os campos rfidAnimal e pesoKg são obrigatórios.' });
     }
 
-    const novaPesagem = new PesagemAutomatica({
+    const dadosPesagem = {
       rfidAnimal,
       pesoKg,
-      donoId: req.usuario.sub 
-    });
+      donoId: req.usuario.sub,
+      dataHoraLeitura: new Date()
+    };
 
-    await novaPesagem.save();
+    await enviarParaRabbitMQ(dadosPesagem);
 
-    return res.status(201).json({
-      mensagem: 'Pesagem registrada com sucesso!',
-      dados: novaPesagem
+    const novaPesagem = new PesagemAutomatica(dadosPesagem);
+    novaPesagem.save().catch(err => console.error("Erro ao salvar no Mongo:", err));
+
+    return res.status(202).json({
+      mensagem: 'Pesagem recebida e enviada para processamento!',
+      dados: dadosPesagem
     });
 
   } catch (erro) {
     console.error(erro);
-    return res.status(500).json({ erro: 'Erro ao salvar a pesagem.' });
+    return res.status(500).json({ erro: 'Erro ao receber a pesagem.' });
   }
 });
 
